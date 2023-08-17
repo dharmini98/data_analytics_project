@@ -71,22 +71,19 @@ def process_stock_data(stock_data):
                          showlegend=True)
 
     fig.show()
-    
+
 def run_kafka_producer():
     producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
     topic = 'stock_data_topic'
-    symbol = 'TSLA'
+    symbol = 'AAPL'
     #symbol = ['AAPL', 'GOOG', 'TSLA']  # Replace this with the stock symbol you want to fetch data for
 
     while True:
         stock_data = fetch_stock_data(symbol)
         producer.send(topic, value=stock_data)
-        print(f"{stock_data}")
-        time.sleep(1)
-'''       
-def process_stock_data(stock_data):
-    # Implement your code here to process and analyze stock data
-    print(f"Received: {stock_data}")
+        print(f"Published:{stock_data}")
+        time.sleep(5)
+
 
 def run_kafka_consumer():
     consumer = KafkaConsumer('stock_data_topic', bootstrap_servers='localhost:9092', value_deserializer=lambda x: json.loads(x.decode('utf-8')))
@@ -96,7 +93,7 @@ def run_kafka_consumer():
         process_stock_data(stock_data)
         
         
-        '''
+        
 if __name__ == "__main__":
     run_kafka_producer()
     run_kafka_consumer()
