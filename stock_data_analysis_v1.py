@@ -36,8 +36,12 @@ def fetch_stock_data(symbol):
 # Process and analyze stock data in real-time
 def process_stock_data(stock_data):
     df = pd.DataFrame(stock_data)
-    df = df.rename(columns={'Date': 'timestamp', 'Close': 'closing_price'})
+    current_time = pd.Timestamp.now()
+    df['timestamp'] = current_time
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df = df.rename(columns={'Date': 'timestamp', 'Close': 'closing_price', 'Stock Splits': 'Stock_Splits' })
 
+    '''
     # Calculate percentage change and rolling average
     df['timestamp'] = pd.to_datetime(df['timestamp']) #changes to pandas datetime object
     df.set_index('timestamp', inplace=True)           #sets timestamp as index to dataframe
@@ -71,6 +75,7 @@ def process_stock_data(stock_data):
                          showlegend=True)
 
     fig.show()
+    '''
     # Insert data into MySQL
     insert_into_mysql(df)
 
@@ -104,19 +109,50 @@ def insert_into_mysql(data):
     }
 
     conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor() #?
+    cursor = conn.cursor() 
 
-    for entry in data.itertuples():
-        query = """
-        INSERT INTO stock_data (symbol_key, timestamp, closing_price)
-        VALUES (%s, %s, %s)
-        """
-        values = (entry.Symbol, entry.Index, entry.closing_price)
-        cursor.execute(query, values)
+    create_table_query = """
+    CREATE TABLE IF NOT EXISTS stock_data (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        timestamp DATETIME ,
+        Open DECIMAL(18, 2),
+        High DECIMAL(18, 2),
+        Low DECIMAL(18, 2),
+        closing_price DECIMAL(18, 2),
+        volume BIGINT,
+        Dividends DECIMAL(18, 2),
+        Stock_Splits DECIMAL(18, 2)
+    )
+    """
+    cursor.execute(create_table_query)
 
     conn.commit()
-    conn.close()       
-        
+    #conn.close()       
+
+    table_name = 'stock_data'
+    data_frame_name = data
+
+    #data = df
+    data_dict_list = data.to_dict(orient='records')
+    #return data_dict_list
+    #values = data.to_records(index=False)
+    values = data_dict_list
+    
+    table_name = 'stock_data'
+
+    columns = ', '.join(values[0].keys())
+    placeholders = ', '.join(['%s'] * len(values[0]))
+
+    insert_query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+
+    insert_values = [(value['Open'], value['High'], value['Low'], value['closing_price'],
+                  value['Volume'], value['Dividends'], value['Stock_Splits'], value['timestamp']) for value in values]
+
+    cursor.executemany(insert_query, insert_values)
+
+    conn.commit()
+    conn.close()
+
 if __name__ == "__main__":
     # Create and start the Kafka producer in a separate thread
     producer_thread = threading.Thread(target=run_kafka_producer)
