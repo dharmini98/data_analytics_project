@@ -71,6 +71,8 @@ def process_stock_data(stock_data):
                          showlegend=True)
 
     fig.show()
+    # Insert data into MySQL
+    insert_into_mysql(df)
 
 def run_kafka_producer():
     producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
@@ -92,7 +94,28 @@ def run_kafka_consumer():
         stock_data = message.value
         process_stock_data(stock_data)
         
-        
+# Insert data into MySQL
+def insert_into_mysql(data):
+    db_config = {
+        "host": "localhost",
+        "user": "root",      # Replace with your MySQL username
+        "password": "ni$ha17111998",  # Replace with your MySQL password
+        "database": "stock"
+    }
+
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor() #?
+
+    for entry in data.itertuples():
+        query = """
+        INSERT INTO stock_data (symbol_key, timestamp, closing_price)
+        VALUES (%s, %s, %s)
+        """
+        values = (entry.Symbol, entry.Index, entry.closing_price)
+        cursor.execute(query, values)
+
+    conn.commit()
+    conn.close()       
         
 if __name__ == "__main__":
     run_kafka_producer()
