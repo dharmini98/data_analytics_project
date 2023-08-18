@@ -42,7 +42,7 @@ def process_stock_data(stock_data):
     df['timestamp'] = pd.to_datetime(df['timestamp']) #changes to pandas datetime object
     df.set_index('timestamp', inplace=True)           #sets timestamp as index to dataframe
     df['percentage_change'] = df['closing_price'].pct_change() * 100  #computes percentage change from immediate prev row
-    df['rolling_average'] = df['closing_price'].rolling(window=5).mean() #?
+    df['rolling_average'] = df['closing_price'].rolling(window=5).mean() #
 
     # Anomaly detection: Identify significant percentage changes
     threshold = 2  # Define the anomaly threshold (adjust as needed)
@@ -118,6 +118,10 @@ def insert_into_mysql(data):
     conn.close()       
         
 if __name__ == "__main__":
-    run_kafka_producer()
+    # Create and start the Kafka producer in a separate thread
+    producer_thread = threading.Thread(target=run_kafka_producer)
+    producer_thread.start()
+
+    # Run the Kafka consumer in the main thread
     run_kafka_consumer()
 
